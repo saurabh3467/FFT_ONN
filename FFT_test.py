@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.fft import fft
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 import os
