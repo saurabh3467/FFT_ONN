@@ -1,0 +1,408 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Feb 15 17:37:11 2023
+
+@author: LinQ
+"""
+
+""""""""""""""""" Import packages (as I am lazy), please delete unnecessary ones """""""""""""""""
+import matplotlib
+matplotlib.use('Qt5Agg')
+from nplab.analysis.background_removal import Iterative_Polynomial as IP   #https://github.com/nanophotonics/nplab is from Cambridge
+from nplab.analysis.background_removal import Adaptive_Polynomial as AP
+from BaselineRemoval import BaselineRemoval
+from nplab.analysis.SERS_Fitting.peaks_and_bg_fitting import fullfit
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.colors
+from matplotlib.cm import inferno, Blues, Purples, Reds
+from matplotlib.figure import figaspect
+import matplotlib.image as mpimg
+from scipy import sparse
+from scipy.sparse.linalg import spsolve
+import scipy.ndimage.filters as ndimf
+import scipy.integrate as scint
+import scipy.optimize as spo
+from scipy import interpolate, signal
+from scipy.signal import savgol_filter as sgFilt
+from scipy.signal import butter, filtfilt
+import os
+from lmfit.models import GaussianModel, LorentzianModel, ExponentialModel, ExponentialGaussianModel, SkewedGaussianModel, SkewedVoigtModel, LinearModel, PolynomialModel
+from scipy.optimize import curve_fit
+from scipy import stats
+import seaborn as sns
+import pandas as pd
+import glob
+import re
+
+
+""""""""""""""""" Paths and parameters """""""""""""""""
+
+work_dir = r"C:\Users\...$" # Update with your data folder
+os.chdir(work_dir)
+f_path = work_dir+"\\Experiments"
+instrument = "Pixis"
+
+if instrument == "Pixis":   #Prior to this, please insert Key to .csv, then save as .xlsx
+    power = 0.010  # in W
+    camera_pixel = 1340
+
+if instrument == "Andor":
+    power = 0.250  # in W
+    camera_pixel = 1024
+
+laser_wavelength = 830
+
+if not os.path.exists('Plots'):
+    os.makedirs('Plots')
+
+
+""""""""""""""""" Peak fit tools """""""""""""""""
+
+def Linearfit(data, Wav):
+    LM = LinearModel()
+    x = Wav
+    Pars = LM.guess(data, x=Wav)
+    res = LM.fit(data, Pars, x=Wav)
+    if len(data) < 200:
+        x_new = np.linspace(np.min(Wav), np.max(Wav), 200)
+        y = interpolate.interp1d(x, res.best_fit, kind='quadratic')
+        best_fit = y(x_new)
+        x = x_new
+    else:
+        best_fit = res.best_fit
+    return best_fit, x
+
+
+def butterLowpassFiltFilt(data, cutoff=1500, fs=60000, order=1):
+    '''Smoothes data without shifting it'''
+    nyq = 0.5 * fs
+    normalCutoff = cutoff / nyq
+    b, a = butter(order, normalCutoff, btype='low', analog=False)
+    yFiltered = filtfilt(b, a, data)
+    return yFiltered
+
+
+def reduceNoise(y, factor=10, cutoff=1500, fs=60000, pl=False):
+
+    if pl == True:
+        ySmooth = sgFilt(y, window_length=221, polyorder=7)
+
+    ySmooth = butterLowpassFiltFilt(y, cutoff=cutoff, fs=fs)
+    yNoise = y - ySmooth
+    yNoise /= factor
+    y = ySmooth + yNoise
+    return y
+
+
+def Gaussian(data, x):
+
+    d = np.max(x) - np.min(x)
+    x_new = np.linspace(np.min(x), np.max(x), 200)
+    y = interpolate.interp1d(x, data, kind='quadratic')
+    data_new = y(x_new)
+
+    x_new_1 = np.linspace(np.min(x)-0.25*d, np.max(x)+0.25*d, 300)
+    data_new_ext_1 = []
+    data_new_ext_2 = []
+    for i in x_new_1:
+        if i < np.min(x):
+            data_new_ext_1.append(0)
+        if i > np.max(x):
+            data_new_ext_2.append(0)
+    data_new_ext_1 = np.asarray(data_new_ext_1)
+    data_new_ext_2 = np.asarray(data_new_ext_2)
+
+    data_new = np.concatenate((data_new_ext_1, data_new), axis=0)
+    data_new = np.concatenate((data_new, data_new_ext_2), axis=0)
+    x_new = x_new_1
+
+    GM = GaussianModel(prefix='Gaussian_')
+    pars = GM.guess(data_new, x=x_new)
+
+    init = GM.eval(pars, x=x_new)
+    out = GM.fit(data_new, pars, x=x_new)
+
+    resonance = out.params['Gaussian_center'].value
+    stderr = out.params['Gaussian_center'].stderr
+    fwhm = out.params['Gaussian_fwhm'].value
+    sigma = out.params['Gaussian_sigma'].value
+    height = out.params['Gaussian_amplitude'].value
+
+    # plt.plot(x_new, data_new)
+    # plt.plot(x_new, out.init_fit, 'k--', label='initial fit')
+    # plt.plot(x_new, out.best_fit, 'r-', label='best fit')
+    # lt.legend(loc='best')
+    # plt.show()
+
+    return resonance, height, fwhm, out.best_fit, x_new
+
+
+""""""""""""""""" Plot and label tools """""""""""""""""
+
+def Wavelength_to_Wavenumber(wavelength, laser_wavelength):
+    return 1e7*(laser_wavelength**(-1) - wavelength**(-1))
+
+
+def LabelRamanPixel(cps = False, legend = True):
+    plt.tick_params(axis='x', which='minor', direction='in')
+    plt.xlabel('Pixel')
+    plt.tick_params(direction='in')
+    if cps == True:
+        plt.ylabel('Raman Intensity (cts s$^{-1}$)')
+    else:
+        plt.ylabel('Raman Intensity (cts)')
+    if legend == True:
+        plt.legend()
+    else:
+        pass
+    return
+
+
+def LabelRamanWn(cps = False, legend = True):
+    plt.tick_params(axis='x', which='minor', direction='in')
+    plt.xlabel('Raman Shift (cm$^{-1}$)')
+    plt.tick_params(direction='in')
+    if cps == True:
+        plt.ylabel('Raman Intensity (cts s$^{-1}$)')
+    else:
+        plt.ylabel('Raman Intensity (cts)')
+    if legend == True:
+        plt.legend()
+    else:
+        pass
+    return
+
+
+def LabelRamanWl(cps = False, legend = True):
+    plt.tick_params(axis='x', which='minor', direction='in')
+    plt.xlabel('Wavelength (nm)')
+    plt.tick_params(direction='in')
+    if cps == True:
+        plt.ylabel('Raman Intensity (cts s$^{-1}$)')
+    else:
+        plt.ylabel('Raman Intensity (cts)')
+    if legend == True:
+        plt.legend()
+    else:
+        pass
+    return
+
+
+def ExtractTxt(k):   # "Andor"
+    f = open(os.path.join(f_path, k), 'r')
+    key = k.split("\\")[-1][:-4]
+    lines = f.readlines()
+    matrix = np.loadtxt(lines[:1025])
+    transpose_matrix = np.transpose(matrix)
+    pixel = transpose_matrix[0][100:]   # [100:] to avoid fitting low wn region
+    intensity = transpose_matrix[1][100:]
+    key_fragment = re.search('-(.*)a', key)   # search for exposure in s, accumulation in a
+    key_fragment_numbers = re.findall('[0-9]+', key_fragment.group(1))
+    exposure = int(key_fragment_numbers[-2])
+    accumulation = int(key_fragment_numbers[-1])
+    return key, intensity, pixel, exposure, accumulation
+
+
+def ExtractCsv(k):   # "Pixis"
+    data = pd.read_csv(k)
+    raw_pixel = data.Column
+    raw_pixel = np.asarray(raw_pixel.astype(np.float))
+    raw_intensity = data.Intensity
+    raw_intensity = np.asarray(raw_intensity.astype(np.float))
+    pixel = raw_pixel[:camera_pixel][100:]
+    split_intensity = [raw_intensity[i:i + camera_pixel] for i in range(0, len(raw_intensity), camera_pixel)]
+    intensity = np.mean(split_intensity, axis=0)
+    intensity = intensity[100:]
+    key = k.split("\\")[-1][:-4]
+    key_fragment = re.search('-(.*)a', key)
+    key_fragment_numbers = re.findall('[0-9]+', key_fragment.group(1))
+    exposure = int(key_fragment_numbers[-2])
+    accumulation = 1   # "as taken average already"
+    # if '500mA' in k:
+    #     key = k.split("\\")[-1][:-4]
+    #     key_fragment = re.search('-(.*)a', key)
+    #     key_fragment_numbers = re.findall('[0-9]+', key_fragment.group(1))
+    #     exposure = int(key_fragment_numbers[-2])
+    #     accumulation = 1
+    # else:
+    #     key = k
+    #     exposure = float("NaN")
+    #     accumulation = float("NaN")
+    #     wavenumber = pixel   # Valid only for exported csv, wrote for reference
+    return key, intensity, pixel, exposure, accumulation
+
+
+def ExtractXlsx(key):
+    key_fragment_zero = re.search('-(.*)a_z', key)
+    key_fragment_numbers_zero = re.findall('[0-9]+', key_fragment_zero.group(1))
+    zero_exposure = int(key_fragment_numbers_zero[-2])   #Note not valid for non-integer like 0.5s
+    zero_accumulation = int(key_fragment_numbers_zero[-1])
+    if '_so' in key:
+        key_fragment = re.search('-(.*)a_so', key)
+        key_fragment_numbers = re.findall('[0-9]+', key_fragment.group(1))
+        exposure = int(key_fragment_numbers[-2])
+        accumulation = int(key_fragment_numbers[-1])
+    else:
+        exposure = float("NaN")
+        accumulation = float("NaN")
+    return zero_exposure, zero_accumulation, exposure, accumulation
+
+
+""""""""""""""""" Load unbaselined/calibrated data: run if raw data has updated """""""""""""""""
+
+if instrument == "Pixis":
+    files = glob.glob(os.path.join(f_path, "*.csv"))
+
+    dark_counts = np.loadtxt(r'Benchtop dark counts.txt')
+    dark_counts_intensity = np.transpose(dark_counts)[1]
+
+    for k in files:
+        if 'ASA' in k:   #Extract ASA data for calibration, background fit and plot
+            key=ExtractCsv(k)[0]
+            intensity=ExtractCsv(k)[1]
+            pixel=ExtractCsv(k)[2]
+
+if instrument == "Andor":
+    files = glob.glob(os.path.join(f_path, "*.asc"))
+    dark_counts_intensity = 0
+
+    for k in files:
+        if 'ASA' in k:
+            key=ExtractTxt(k)[0]
+            intensity=ExtractTxt(k)[1]
+            pixel=ExtractTxt(k)[2]
+
+
+""""""""""""""""" Calibration: for Pixis and Andor using aspirin (ASA) only """""""""""""""""
+
+if instrument == "Pixis" or "Andor":
+
+    if not os.path.exists('Calibration'):
+        os.makedirs('Calibration')
+
+    '''Fit background'''
+    polynomial_degree=3 # Degree is the polynomial degree to fit
+    bgd=AP.Run(intensity, polynomial_degree, Auto_Remove=False)
+    spec=intensity-bgd
+
+    '''Plot ASA data to double check'''
+    plt.figure(figsize=[7, 4])
+    plt.plot(pixel, intensity, label='spectrum', color='orange')  # raw data
+    plt.plot(pixel, bgd, label='background', color='red')  # to check background
+    plt.plot(pixel, spec, label='spectrum-background', color='blue')
+    LabelRamanPixel(cps = False, legend=True)
+    plt.savefig('Calibration\\Fig_'+key+'_bgd_fit_poly'+str(polynomial_degree)+'_px.png', transparent=True)
+
+    """Repeat the following a few times until good fit. Once good fit achived, skip this part"""
+    if instrument == "Pixis":
+        main_spec = spec[70:950]
+        main_pixel = pixel[70:950]
+        high_spec = spec[950:1200]
+        high_pixel = pixel[950:1200]
+
+    if instrument == "Andor":
+        main_spec = spec[:730-100]
+        main_pixel = pixel[:730-100]
+        high_spec = spec[730-100:850-100]
+        high_pixel = pixel[730-100:850-100]
+
+    '''Fit peaks for main range'''   # Split to "main" and "high pixel" range, because full spectrum fails the fit
+    plt.figure(figsize=[12, 4])
+    plt.plot(main_pixel, main_spec, label='spectrum-background', color='blue')
+
+    polyfit_degree = 1   # As already use poly3 to subtract background
+    peak_spacing = 8
+    peak_width = 30
+    ff1 = fullfit(main_spec, main_pixel, lineshape='G', order=polyfit_degree, transmission=None, bg_function='poly', vary_const_bg=False)
+    ff1.run(min_peak_spacing=peak_spacing, maxwidth=peak_width)
+    print(ff1.peaks)
+
+    for i in ff1.peaks:
+        plt.axvline(x=i[1], linestyle='--', color='darkgrey')
+        plt.text(i[1], max(main_spec), int(i[1]), rotation=90, verticalalignment='top')
+    # Repeat above until satisfied, can adjust peak_spacing and peak_width
+
+    '''Fit peaks for high pixel range'''
+    plt.plot(high_pixel, high_spec, label='spectrum-background', color='blue')
+
+    polyfit_degree = 1
+    peak_spacing = 6
+    peak_width = 10
+    ff2 = fullfit(high_spec, high_pixel, lineshape='G', order=polyfit_degree, transmission=None, bg_function='poly', vary_const_bg=False)
+    ff2.run(min_peak_spacing=peak_spacing, maxwidth=peak_width)
+    print(ff2.peaks)
+
+    for i in ff2.peaks:
+        plt.axvline(x=i[1], linestyle='--', color='darkgrey')
+        plt.text(i[1], max(main_spec), int(i[1]), rotation=90, verticalalignment='top')
+    LabelRamanPixel(cps = False, legend=False)
+    plt.title(key+'_peak_fit_poly'+str(polynomial_degree))
+    plt.savefig('Calibration\\Fig_'+key+'peak_fit_poly'+str(polynomial_degree)+'.png', transparent=True)
+
+    main_fit = ff1.peaks
+    high_fit = ff2.peaks
+    full_fit = main_fit+high_fit
+    full_fit_height = np.transpose(full_fit)[0]
+    full_fit_position = np.transpose(full_fit)[1]
+    full_fit_width = np.transpose(full_fit)[2]
+
+    np.savez('Calibration\\ASA_Pixel_Fit_Summary.npz', peak_height=full_fit_height, peak_position=full_fit_position, peak_width=full_fit_width)  # Note peaks are stored at random order
+    """End of repeat/skip part"""
+
+
+    '''Reference ASA peak in wn'''
+    wn_position=[551,666,751,1045,1191,1293,1606]   # Please check peak fit and match this manually
+
+    fit_summary = np.load('Calibration\\ASA_Pixel_Fit_Summary.npz')
+    peak_position = fit_summary['peak_position']
+    pixel_position = np.sort(peak_position)
+
+    plt.figure()
+    plt.scatter(pixel_position, wn_position, color='blue', label='Calibration points')
+
+    x = np.linspace(1, camera_pixel, camera_pixel)
+    coefficients = np.polyfit(pixel_position, wn_position, 3)
+    y = coefficients[3]+x*coefficients[2]+x**2*coefficients[1]+x**3*coefficients[0]
+    plt.plot(x, y, color='red', label='polyfit degree 3')
+    plt.xlim(0, camera_pixel)
+    LabelRamanPixel(cps = False, legend=True)
+    plt.savefig('Calibration\\Fig_Calibration_polyfit3.png', transparent=True)
+    np.savetxt('Calibtration.txt', np.c_[x, y], delimiter='\t')
+
+    '''Plot ASA intensity in wn'''
+    calibration = np.loadtxt('Calibtration.txt')
+    if instrument == "Pixis" or "Andor":
+        wn = np.transpose(calibration)[1][100:]
+
+    plt.figure(figsize=[7, 4])
+    plt.plot(wn, intensity, label='spectrum', color='orange')
+    plt.title(key)
+    LabelRamanWn(cps = False, legend=True)
+    plt.savefig('Calibration\\Fig_'+key+'.png', transparent=True)
+    plt.close()
+
+    '''Plot ASA spec with background fit'''
+    plt.figure(figsize=[7, 4])
+    plt.plot(wn, intensity, label='spectrum', color='orange')
+    plt.plot(wn, bgd, label='background_polynomial'+str(polynomial_degree), color='red')
+    plt.plot(wn, intensity-bgd, label='spectrum-background', color='blue')
+    plt.title(key+' with background fit')
+    LabelRamanWn(cps = False, legend=True)
+    plt.savefig('Calibration\\Fig_'+key+'_bgd_fit_poly'+str(polynomial_degree)+'_wn.png', transparent=True)
+    plt.close()
+
+    '''Plot spec with background subtracted'''
+    plt.figure(figsize=[7, 4])
+    plt.plot(wn, intensity-bgd, label='spectrum-background', color='blue')
+    plt.title(key)
+    LabelRamanWn(cps = False, legend=False)
+    plt.savefig('Calibration\\Fig_'+key+'_bgd_subtracted.png', transparent=True)
+    plt.close()
+
+
+""""""""""""""""" Load calibration: for Pixis and Andor only """""""""""""""""
+
+if instrument == "Pixis" or "Andor":
+    calibration = np.loadtxt('Calibtration.txt')
+    wn = np.transpose(calibration)[1][100:]
