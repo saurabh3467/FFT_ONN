@@ -93,17 +93,37 @@ length = float(input("Enter the distance between the electrodes in cm: "))
 # Ask the user for the path to the directory
 path = input("Enter the path to the directory: ")
 
-# ============= use above functions in code here ==============================
-
-for filename in os.listdir(path):
-    if filename.endswith(".txt"):
-        input_filename = os.path.splitext(os.path.basename(filename))[0]
-        comma_to_dot(os.path.join(path, filename))
-        current_float_smooth = data_smoothening('tmp_data.txt')  # pass input_filename to data_smoothening
-        fft_result = perform_fft(current_float_smooth) # pass the stored value as the input argument to perform_fft
-        
-        data = np.loadtxt('tmp_data.txt', dtype=str, delimiter=';')
-        # Extract the time from the data array and Convert from strings to floats
-        time = data[:, 2]
-        time_float = [float(x) for x in time]
-        plot_fft(fft_result, time_float, voltage, volume, length, path, input_filename)
+smooth = input("Do you want to smoothen I-V data? (y/n)")
+if smooth == 'y':
+    # ============= Perform FFT and fit without smoothing =========================
+    for filename in os.listdir(path):
+        if filename.endswith(".txt"):
+            input_filename = os.path.splitext(os.path.basename(filename))[0]
+            comma_to_dot(os.path.join(path, filename))
+            data = np.loadtxt('tmp_data.txt', dtype=str, delimiter=';')
+            # Extract the current from the data array and Convert from strings to floats
+            current = data[:, 1]
+            current_float = [float(x) for x in current]
+            
+            fft_result = perform_fft(current_float) # pass the stored value as the input argument to perform_fft
+            
+            # Extract the time from the data array and Convert from strings to floats
+            time = data[:, 2]
+            time_float = [float(x) for x in time]
+            plot_fft(fft_result, time_float, voltage, volume, length, path, input_filename)
+elif smooth == 'n':    
+    # ============= Perform FFT and fit with  smoothing ===========================
+    for filename in os.listdir(path):
+        if filename.endswith(".txt"):
+            input_filename = os.path.splitext(os.path.basename(filename))[0]
+            comma_to_dot(os.path.join(path, filename))
+            current_float_smooth = data_smoothening('tmp_data.txt')  # pass input_filename to data_smoothening
+            fft_result = perform_fft(current_float_smooth) # pass the stored value as the input argument to perform_fft
+            
+            data = np.loadtxt('tmp_data.txt', dtype=str, delimiter=';')
+            # Extract the time from the data array and Convert from strings to floats
+            time = data[:, 2]
+            time_float = [float(x) for x in time]
+            plot_fft(fft_result, time_float, voltage, volume, length, path, input_filename)
+else:
+    print("Wrong input, I asked y/n, start again :-P")
