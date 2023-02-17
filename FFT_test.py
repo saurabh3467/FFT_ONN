@@ -41,6 +41,30 @@ def data_smoothening(filename: str) -> List[float]:
     # Perform data smoothing using Savitzky-Golay filter with window length of 30 and polynomial order of 3
     # Note: Higher window length -> more smoothing, less detail; higher polynomial order -> more detail, introduced noise
     current_float_smooth = savgol_filter(current_float, 30, 3)
+    
+    # Create a figure and axes objects for plotting
+    fig, ax = plt.subplots()
+
+    # Plot the original current-time data in blue
+    ax.plot(current_float, color='blue', label='Original Data')
+
+    # Plot the smoothed data in red
+    ax.plot(current_float_smooth, color='red', label='Smoothed Data')
+
+    # Set the title and axis labels
+    ax.set_title('Current vs. Time')
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('Current (A)')
+
+    # Add a legend to the plot
+    ax.legend()
+
+    # Show the plot
+    plt.show()
+    # Create the subfolder if it does not exist yet
+    if not os.path.exists(os.path.join(path,'Smooth')):
+        os.makedirs(os.path.join(path,'Smooth'))
+    plt.savefig(os.path.join(path, f'Smooth/{input_filename}_smooth.png'), dpi=300)
 
     # Return the smoothed current data as a list of floats
     return current_float_smooth
@@ -54,9 +78,6 @@ def perform_fft(current_float_smooth: List[float]) -> List[complex]:
 
 # function to plot and save the FFT figure and txt file
 def plot_fft(fft_current: List[complex], time_float: List[float], voltage: int, volume: int, length: int, path: str, input_filename: str) -> None:
-# =============================================================================
-# def plot_fft(fft_current: List[complex], time_float: List[float], voltage: int, volume: int, length: int) -> None:
-# =============================================================================
     freq = np.fft.fftfreq(len(fft_current), time_float[1] - time_float[0])
     max_value = np.max(np.abs(fft_current[(freq >= 0.1)]))
     plt.plot(freq, np.abs(fft_current), linewidth=0.2, color='black')
@@ -80,7 +101,7 @@ def plot_fft(fft_current: List[complex], time_float: List[float], voltage: int, 
         for i in range(len(freq)):
              f.write('{} {}\n'.format(freq[i], np.abs(fft_current[i])))
         plt.figure() #shows all plots 1-by-1 instead of just last one
-    
+        
 # ========================== functions end here ==============================
 
 # ========================== user input =======================================
@@ -94,7 +115,7 @@ length = float(input("Enter the distance between the electrodes in cm: "))
 path = input("Enter the path to the directory: ")
 
 smooth = input("Do you want to smoothen I-V data? (y/n)")
-if smooth == 'y':
+if smooth == 'n':
     # ============= Perform FFT and fit without smoothing =========================
     for filename in os.listdir(path):
         if filename.endswith(".txt"):
@@ -111,7 +132,7 @@ if smooth == 'y':
             time = data[:, 2]
             time_float = [float(x) for x in time]
             plot_fft(fft_result, time_float, voltage, volume, length, path, input_filename)
-elif smooth == 'n':    
+elif smooth == 'y':    
     # ============= Perform FFT and fit with  smoothing ===========================
     for filename in os.listdir(path):
         if filename.endswith(".txt"):
