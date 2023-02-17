@@ -53,7 +53,10 @@ def perform_fft(current_float_smooth: List[float]) -> List[complex]:
     return fft_current
 
 # function to plot and save the FFT figure and txt file
-def plot_fft(fft_current: List[complex], time_float: List[float], voltage: int, volume: int, length: int) -> None:
+def plot_fft(fft_current: List[complex], time_float: List[float], voltage: int, volume: int, length: int, path: str, input_filename: str) -> None:
+# =============================================================================
+# def plot_fft(fft_current: List[complex], time_float: List[float], voltage: int, volume: int, length: int) -> None:
+# =============================================================================
     freq = np.fft.fftfreq(len(fft_current), time_float[1] - time_float[0])
     max_value = np.max(np.abs(fft_current[(freq >= 0.1)]))
     plt.plot(freq, np.abs(fft_current), linewidth=0.2, color='black')
@@ -66,13 +69,14 @@ def plot_fft(fft_current: List[complex], time_float: List[float], voltage: int, 
     plt.rcParams['ytick.labelsize'] = 12
     plt.rcParams['axes.labelweight'] = 'bold'
     plt.legend(['{}V, {} µL, {} cm'.format(voltage, volume, length)])
+    
     # Create the subfolder if it does not exist yet
-    if not os.path.exists("FFT"):
-        os.makedirs("FFT")
+    if not os.path.exists(os.path.join(path, "FFT")):
+        os.makedirs(os.path.join(path, "FFT"))
         
     # Save the FFT data and plot to a text file in a folder called "FFT"
-    plt.savefig(f'FFT/{input_filename}.png')
-    with open(f'FFT/{input_filename}_FFT.txt', 'w') as f:
+    plt.savefig(os.path.join(path, f'FFT/{input_filename}.png'))
+    with open(os.path.join(path, f'FFT/{input_filename}_FFT.txt'), 'w') as f:
         for i in range(len(freq)):
              f.write('{} {}\n'.format(freq[i], np.abs(fft_current[i])))
         plt.figure() #shows all plots 1-by-1 instead of just last one
@@ -99,8 +103,7 @@ for filename in os.listdir(path):
         fft_result = perform_fft(current_float_smooth) # pass the stored value as the input argument to perform_fft
         
         data = np.loadtxt('tmp_data.txt', dtype=str, delimiter=';')
-
         # Extract the time from the data array and Convert from strings to floats
         time = data[:, 2]
         time_float = [float(x) for x in time]
-        plot_fft(fft_result, time_float, voltage, volume, length)
+        plot_fft(fft_result, time_float, voltage, volume, length, path, input_filename)
