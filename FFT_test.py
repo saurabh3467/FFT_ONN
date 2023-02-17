@@ -35,13 +35,9 @@ def data_smoothening(filename: str) -> List[float]:
     # Load the data from the file using np.loadtxt()
     data = np.loadtxt(filename, dtype=str, delimiter=';')
 
-    # Extract the time and current data from the data array
-    time = data[:, 2]
+    # Extract the current from the data array and Convert from strings to floats
     current = data[:, 1]
-
-    # Convert current and time data from strings to floats
     current_float = [float(x) for x in current]
-    time_float = [float(x) for x in time]
 
     # Perform data smoothing using Savitzky-Golay filter with window length of 30 and polynomial order of 3
     # Note: Higher window length -> more smoothing, less detail; higher polynomial order -> more detail, introduced noise
@@ -105,11 +101,7 @@ for filename in os.listdir(path):
         
         data = np.loadtxt('tmp_data.txt', dtype=str, delimiter=';')
 
-        # Extract the time and current data from the data array
+        # Extract the time from the data array and Convert from strings to floats
         time = data[:, 2]
-        current = data[:, 1]
-
-        # Convert current and time data from strings to floats
-        current_float = [float(x) for x in current]
         time_float = [float(x) for x in time]
         plot_fft(fft_result, time_float, voltage, volume, length)
