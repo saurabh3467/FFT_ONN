@@ -75,7 +75,7 @@ def plot_fft(fft_current: List[complex], time_float: List[float], voltage: int, 
         os.makedirs(os.path.join(path, "FFT"))
         
     # Save the FFT data and plot to a text file in a folder called "FFT"
-    plt.savefig(os.path.join(path, f'FFT/{input_filename}.png'))
+    plt.savefig(os.path.join(path, f'FFT/{input_filename}.png'), dpi=300)
     with open(os.path.join(path, f'FFT/{input_filename}_FFT.txt'), 'w') as f:
         for i in range(len(freq)):
              f.write('{} {}\n'.format(freq[i], np.abs(fft_current[i])))
