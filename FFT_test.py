@@ -60,7 +60,7 @@ def data_smoothening(filename: str) -> List[float]:
     ax.legend()
 
     # Show the plot
-    plt.show()
+    #plt.show()
     # Create the subfolder if it does not exist yet
     if not os.path.exists(os.path.join(path,'Smooth')):
         os.makedirs(os.path.join(path,'Smooth'))
@@ -100,7 +100,7 @@ def plot_fft(fft_current: List[complex], time_float: List[float], voltage: int, 
     with open(os.path.join(path, f'FFT/{input_filename}_FFT.txt'), 'w') as f:
         for i in range(len(freq)):
              f.write('{} {}\n'.format(freq[i], np.abs(fft_current[i])))
-        plt.figure() #shows all plots 1-by-1 instead of just last one
+        #plt.figure() #shows all plots 1-by-1 instead of just last one
         
 # ========================== functions end here ==============================
 
