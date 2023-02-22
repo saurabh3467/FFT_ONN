@@ -27,13 +27,14 @@ def comma_to_dot(filename: str) -> None:
             if i > 0:
                 # Split the line into a list of values
                 data = line.strip().split(';')
+                
+                for j, value in enumerate(data):
                 # Replace commas with dots in the first four values of the line
-                data[0] = data[0].replace(',', '.')
-                data[1] = data[1].replace(',', '.')
-                data[2] = data[2].replace(',', '.')
-                data[3] = data[3].replace(',', '.')
+                    data[j] = data[j].replace(',', '.')
                 # Join the updated values with semicolons and write them to the new file
                 f.write(';'.join(data) + '\n')
+                #i = i + 1
+                print(i)
 
 # function to perform data smoothening on the current-time data
 def data_smoothening(filename: str) -> List[float]:
