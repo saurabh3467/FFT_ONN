@@ -37,6 +37,8 @@ def data_smoothening(filename: str) -> List[float]:
     # Extract the current from the data array and Convert from strings to floats
     current = data[:, 1]
     current_float = [float(x) for x in current]
+    time = data[:, 0]
+    time_float = [float(x) for x in time]
 
     # Perform data smoothing using Savitzky-Golay filter with window length of 30 and polynomial order of 3
     # Note: Higher window length -> more smoothing, less detail; higher polynomial order -> more detail, introduced noise
@@ -65,7 +67,9 @@ def data_smoothening(filename: str) -> List[float]:
     if not os.path.exists(os.path.join(path,'Smooth')):
         os.makedirs(os.path.join(path,'Smooth'))
     plt.savefig(os.path.join(path, f'Smooth/{input_filename}_smooth.png'), dpi=300)
-
+    with open(os.path.join(path, f'Smooth/{input_filename}_smooth.txt'), 'w') as f:
+        for i in range(len(time_float)):
+             f.write('{} {} {}\n'.format(time_float[i], np.abs(current_float[i]), np.abs(current_float_smooth[i])))
     # Return the smoothed current data as a list of floats
     return current_float_smooth
 
