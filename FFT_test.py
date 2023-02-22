@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Feb 22 14:36:51 2023
+
+@author: SoniS
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
