@@ -4,36 +4,160 @@ Created on Wed Feb 22 14:36:51 2023
 
 @author: SoniS
 """
-
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 import os
 from typing import List
 
+# ========================== different functions go here ======================
+
+# function to convert comma to dot in a file
+def comma_to_dot(filename: str) -> None:
+    with open(filename, 'r') as f:# Open the input file in read mode
+        lines = f.readlines()# Read all lines of the file and store them in the list 'lines'
+    with open('tmp_data.txt', 'w') as f:# Open a new file in write mode to write the updated data
+        for i, line in enumerate(lines):        # Loop through the lines of the input file
+            if i > 0:# Skip the first line (header)
+                data = line.strip().split(';')# Split the line into a list of values
+                for j, value in enumerate(data):# Replace commas with dots in the all values of the line
+                    data[j] = data[j].replace(',', '.')
+                f.write(';'.join(data) + '\n')# Join the updated values with semicolons and write them to the new file
+
+# function to perform data smoothening on the current-time data
+def data_smoothening(filename: str) -> List[float]:
+    data = np.loadtxt(filename, dtype=str, delimiter=';')    # Load the data from the file using np.loadtxt()
+    current = data[:, 1]    # Extract the current from the data array and Convert from strings to floats
+    current_float = [float(x) for x in current]
+    time = data[:, 0]
+    time_float = [float(x) for x in time]
+
+    # Perform data smoothing using Savitzky-Golay filter with window length of 30 and polynomial order of 3
+    # Note: Higher window length -> more smoothing, less detail; higher polynomial order -> more detail, introduced noise
+    current_float_smooth = savgol_filter(current_float, 30, 3)
+    
+    fig, ax = plt.subplots()    # Create a figure and axes objects for plotting
+    ax.plot(current_float, color='blue', label='Original Data')    # Plot the original current-time data in blue
+    ax.plot(current_float_smooth, color='red', label='Smoothed Data')    # Plot the smoothed data in red
+    ax.set_title('Current vs. Time')    # Set the title and axis labels
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('Current (A)')
+    ax.legend()    # Add a legend to the plot
+    #plt.show()# Show the plot
+    if not os.path.exists(os.path.join(path,'Smooth')):# Create the subfolder if it does not exist yet
+        os.makedirs(os.path.join(path,'Smooth'))
+    plt.savefig(os.path.join(path, f'Smooth/{input_filename}_smooth.png'), dpi=300)
+    with open(os.path.join(path, f'Smooth/{input_filename}_smooth.txt'), 'w') as f:
+        for i in range(len(time_float)):
+             f.write('{} {} {}\n'.format(time_float[i], np.abs(current_float[i]), np.abs(current_float_smooth[i])))
+    return current_float_smooth# Return the smoothed current data as a list of floats
+    
+# function to perform FFT on the current data
+def perform_fft(current_float_smooth: List[float]) -> List[complex]:
+    window = np.hanning(len(current_float_smooth))
+    current_float_windowed = current_float_smooth * window
+    fft_current = np.fft.fft(current_float_windowed)
+    return fft_current
+
+# function to plot and save the FFT figure and txt file
+def plot_fft(fft_current: List[complex], time_float: List[float], voltage: int, volume: int, length: int, path: str, input_filename: str) -> None:
+    freq = np.fft.fftfreq(len(fft_current), time_float[1] - time_float[0])
+    max_value = np.max(np.abs(fft_current[(freq >= 0.1)]))
+    plt.plot(freq, np.abs(fft_current), linewidth=0.2, color='black')
+    plt.xlabel('Frequency (Hz)', fontsize=16)
+    plt.ylabel('Amplitude', fontsize=16)
+    plt.xlim([-0.1, 60])
+    plt.ylim([0, max_value * 1.1])
+    plt.rcParams['axes.linewidth'] = 2
+    plt.rcParams['xtick.labelsize'] = 12
+    plt.rcParams['ytick.labelsize'] = 12
+    plt.rcParams['axes.labelweight'] = 'bold'
+    plt.legend(['{}V, {} µL, {} cm'.format(voltage, volume, length)])
+    
+    if not os.path.exists(os.path.join(path, "FFT")):
+        os.makedirs(os.path.join(path, "FFT"))
+        
+    plt.savefig(os.path.join(path, f'FFT/{input_filename}.png'), dpi=300)# Save the FFT data and plot to a text file in a folder called "FFT"
+    with open(os.path.join(path, f'FFT/{input_filename}_FFT.txt'), 'w') as f:
+        for i in range(len(freq)):
+             f.write('{} {}\n'.format(freq[i], np.abs(fft_current[i])))
+        #plt.figure() #shows all plots 1-by-1 instead of just last one
+      
 def split_file(input_file):
     with open(input_file, 'r') as f:# Open the input file in read mode
         lines = f.readlines()# Read all lines of the file and store them in the list 'lines'
-    with open('tmp_data.txt', 'w') as f:# Open a new file in write mode to write the updated data
+    with open('temp_data.txt', 'w') as f:# Open a new file in write mode to write the updated data
         for i, line in enumerate(lines[1:]):        # Loop through the lines of the input file, skipping first line
             data = line.replace(',', '.')
             f.write(data) # Join the updated values with semicolons and write them to the new file
-    data = np.loadtxt('tmp_data.txt', delimiter='\t')
+    data = np.loadtxt('temp_data.txt', delimiter='\t')
+# =============================================================================
+# with open('tmp_data.txt', 'r') as f:
+#         data = np.loadtxt(f, delimiter='\t')
+# =============================================================================
     # Split data into 10 separate arrays based on the voltage value
-    split_data = np.split(data, 10, axis=1)
+    vol_range = float(input("How many number of voltage points were recorded:"))
+    split_data = np.split(data, vol_range, axis=1)
     
-    output_dir = os.path.join(path, "Split_file")
+    output_dir = os.path.join(path, "Split_inputfile")
     os.makedirs(output_dir, exist_ok=True)
     
     # Save each split array to a separate file with the original file name appended by the voltage value
     for i, data in enumerate(split_data, start=1):
         np.savetxt(os.path.join(output_dir, f"{input_filename}_{i}V.txt"), data, delimiter='\t')
+# ========================== functions end here ===============================
 
-# ============== Ask the user for the path to the directory ===================
+# ======== Ask the user for the path & parameters to the directory ============
+volume = float(input("Enter the volume of the droplet in µL: "))
+voltage = float(input("Enter the voltage applied: "))
+length = float(input("Enter the distance between the electrodes in cm: "))
 path = input("Enter the path to the directory: ")
 
-for filename in os.listdir(path):
-    input_filename = os.path.splitext(os.path.basename(filename))[0]
-    if filename.endswith(".txt"):
-        split_file(os.path.join(path, filename))
-    
+smooth = input("Do you want to smoothen I-V data? (y/n)")
+split = input("Do you need to split files from 1 to 10V? (y/n)")
+
+if smooth == 'n':
+    # ============= Perform FFT and fit without smoothing =========================
+    for filename in os.listdir(path):
+        if filename.endswith(".txt"):
+            input_filename = os.path.splitext(os.path.basename(filename))[0]
+            if split == 'y':
+                split_file(os.path.join(path, filename))
+                output_dir = os.path.join(path, "Split_inputfile")
+            elif split == 'n':
+                comma_to_dot(os.path.join(path, filename))
+# =============================================================================
+#             for newfilename in os.listdir(output_dir):
+#                 if newfilename.endswith(".txt"):
+# =============================================================================
+            for j in range(1,10):
+                newinput_filename = os.path.splitext(os.path.basename(os.path.join(output_dir, f"{input_filename}_{j}V.txt")))[0]
+                newdata = np.loadtxt(os.path.join(output_dir, f"{input_filename}_{j}V.txt"), dtype=str, delimiter='\t')
+                current = newdata[:, 2]
+                current_float = [float(x) for x in current]
+                
+                fft_result = perform_fft(current_float) # pass the stored value as the input argument to perform_fft
+                
+                time = newdata[:, 1]
+                time_float = [float(x) for x in time]
+                plot_fft(fft_result, time_float, voltage, volume, length, output_dir, newinput_filename)
+elif smooth == 'y':    
+    # ============= Perform FFT and fit with smoothing ===========================
+    for filename in os.listdir(path):
+        if filename.endswith(".txt"):
+            input_filename = os.path.splitext(os.path.basename(filename))[0]
+            comma_to_dot(os.path.join(path, filename))
+            if split == 'y':
+                split_file(os.path.join(path, filename))
+                path = os.path.join(path, "Split_inputfile")
+            elif split == 'n':
+                None
+            current_float_smooth = data_smoothening('tmp_data.txt')  # pass input_filename to data_smoothening
+            fft_result = perform_fft(current_float_smooth) # pass the stored value as the input argument to perform_fft
+            
+            data = np.loadtxt('tmp_data.txt', dtype=str, delimiter=';')
+            time = data[:, 2]
+            time_float = [float(x) for x in time]
+            plot_fft(fft_result, time_float, voltage, volume, length, path, input_filename)
+else:
+    print("Wrong input, I asked y/n, start again :-P")

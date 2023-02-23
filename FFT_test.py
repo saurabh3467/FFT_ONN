@@ -83,13 +83,55 @@ def plot_fft(fft_current: List[complex], time_float: List[float], voltage: int, 
              f.write('{} {}\n'.format(freq[i], np.abs(fft_current[i])))
         #plt.figure() #shows all plots 1-by-1 instead of just last one
         
+def split_file(input_file):
+    with open(input_file, 'r') as f:# Open the input file in read mode
+        lines = f.readlines()# Read all lines of the file and store them in the list 'lines'
+    with open('temp_data.txt', 'w') as f:# Open a new file in write mode to write the updated data
+        for i, line in enumerate(lines[1:]):        # Loop through the lines of the input file, skipping first line
+            data = line.replace(',', '.')
+            f.write(data) # Join the updated values with semicolons and write them to the new file
+    data = np.loadtxt('temp_data.txt', delimiter='\t')
+    # =============================================================================
+    # with open('tmp_data.txt', 'r') as f:
+    #         data = np.loadtxt(f, delimiter='\t')
+    # =============================================================================
+    # Split data into 10 separate arrays based on the voltage value
+    vol_range = float(input("How many number of voltage points were recorded:"))
+    split_data = np.split(data, vol_range, axis=1)
+    
+    output_dir = os.path.join(path, "Split_inputfile")
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Save each split array to a separate file with the original file name appended by the voltage value
+    for i, data in enumerate(split_data, start=1):
+        np.savetxt(os.path.join(output_dir, f"{input_filename}_{i}V.txt"), data, delimiter='\t')
+        
 # ========================== functions end here ===============================
 
 # ======== Ask the user for the path & parameters to the directory ============
 volume = float(input("Enter the volume of the droplet in µL: "))
 voltage = float(input("Enter the voltage applied: "))
 length = float(input("Enter the distance between the electrodes in cm: "))
-path = input("Enter the path to the directory: ")
+direc = input("Enter the path to the directory: ")
+split = input("Do you need to split files from 1 to 10V? (y/n)")
+
+if split == 'y':
+    # ============= Perform splitting ========================================
+    for filename in os.listdir(direc):
+        if filename.endswith(".txt"):
+            input_filename = os.path.splitext(os.path.basename(filename))[0]
+            split_file(os.path.join(direc, filename))
+            output_dir = os.path.join(direc, "Split_inputfile")
+elif split == 'n':
+    None
+            
+          
+for filename in os.listdir(direc):
+    input_filename = os.path.splitext(os.path.basename(filename))[0]
+    if filename.endswith(".txt"):
+        split_file(os.path.join(direc, filename))
+
+path = os.path.join(direc, "")
 
 smooth = input("Do you want to smoothen I-V data? (y/n)")
 if smooth == 'n':
