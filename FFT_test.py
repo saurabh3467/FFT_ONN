@@ -141,6 +141,7 @@ if smooth == 'y':
             time = data[:, tc]
             time_float = [float(x) for x in time]
             plot_fft(fft_result, time_float, path, input_filename)
+            plt.close()
 elif smooth == 'n':
     # ============= Perform FFT and fit without smoothing =========================
     for filename in os.listdir(path):
@@ -154,5 +155,6 @@ elif smooth == 'n':
             time = data[:, tc]
             time_float = [float(x) for x in time]
             plot_fft(fft_result, time_float, path, input_filename)
+            plt.close() # IMPORTANT
 else:
     print("Wrong input, I asked y/n, start again :-P")
