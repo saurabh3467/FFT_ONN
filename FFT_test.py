@@ -34,7 +34,7 @@ def data_smoothening(filename: str) -> List[float]:
 
     # Perform data smoothing using Savitzky-Golay filter with window length of 30 and polynomial order of 3
     # Note: Higher window length -> more smoothing, less detail; higher polynomial order -> more detail, introduced noise
-    current_float_smooth = savgol_filter(current_float, 30, 3)
+    current_float_smooth = savgol_filter(current_float, 31, 3)
     
     fig, ax = plt.subplots()    # Create a figure and axes objects for plotting
     ax.plot(current_float, color='blue', label='Original Current')    # Plot the original current-time data in blue
@@ -49,9 +49,9 @@ def data_smoothening(filename: str) -> List[float]:
     plt.savefig(os.path.join(path, f'Smoothed_Data/{input_filename}_smooth.png'), dpi=300)
     plt.close()
     with open(os.path.join(path, f'Smoothed_Data/{input_filename}_smooth.txt'), 'w') as f:
-        f.write('Time(s)\tOriginal_Current(A)\tSmoothed_Current(A)\n')
+        f.write('Time(s) \t Original_Current(A) \t Smoothed_Current(A)\n')
         for i in range(len(time_float)):
-             f.write('{}\t{}\t{}\n'.format(time_float[i], np.abs(current_float[i]), np.abs(current_float_smooth[i])))
+             f.write('{} \t {} \t {}\n'.format(time_float[i], np.abs(current_float[i]), np.abs(current_float_smooth[i])))
     return current_float_smooth# Return the smoothed current data as a list of floats
     
 # function to perform FFT on the current data
@@ -129,32 +129,24 @@ elif split == 'n':
     path = direc
 
 smooth = input("Do you want to smoothen I-V data? (y/n) ")
-if smooth == 'y':    
-    # ============= Perform FFT and fit with  smoothing ===========================
-    for filename in os.listdir(path):
-        if filename.endswith(".txt"):
-            input_filename = os.path.splitext(os.path.basename(filename))[0]
-            comma_to_dot(os.path.join(path, filename))
+for filename in os.listdir(path):
+    if filename.endswith('.txt'):
+        input_filename = os.path.splitext(os.path.basename(filename))[0]
+        comma_to_dot(os.path.join(path, filename))
+        if smooth == 'y':
             current_float_smooth = data_smoothening('tmp_data.txt')  # pass input_filename to data_smoothening
             fft_result = perform_fft(current_float_smooth) # pass the stored value as the input argument to perform_fft
-            data = np.loadtxt('tmp_data.txt', dtype=str, delimiter='\t')
-            time = data[:, tc]
-            time_float = [float(x) for x in time]
-            plot_fft(fft_result, time_float, path, input_filename)
-            plt.close()
-elif smooth == 'n':
-    # ============= Perform FFT and fit without smoothing =========================
-    for filename in os.listdir(path):
-        if filename.endswith(".txt"):
-            input_filename = os.path.splitext(os.path.basename(filename))[0]
-            comma_to_dot(os.path.join(path, filename))
+        elif smooth == 'n':
             data = np.loadtxt('tmp_data.txt', dtype=str, delimiter='\t')
             current = data[:, cc]
             current_float = [float(x) for x in current]
             fft_result = perform_fft(current_float) # pass the stored value as the input argument to perform_fft
-            time = data[:, tc]
-            time_float = [float(x) for x in time]
-            plot_fft(fft_result, time_float, path, input_filename)
-            plt.close() # IMPORTANT
-else:
-    print("Wrong input, I asked y/n, start again :-P")
+        else:
+            print("What is wrong with you? Answer y/n!")
+        data = np.loadtxt('tmp_data.txt', dtype=str, delimiter='\t')
+        current = data[:, cc]
+        current_float = [float(x) for x in current]
+        time = data[:, tc]
+        time_float = [float(x) for x in time]
+        plot_fft(fft_result, time_float, path, input_filename)
+        plt.close()
