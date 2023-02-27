@@ -25,13 +25,17 @@ def comma_to_dot(filename: str) -> None:
             f.write('\t'.join(data) + '\n')# Join the updated values with semicolons and write them to the new file
 
 # function to perform data smoothening on the current-time data
-def data_smoothening(filename: str) -> List[float]:
+def data_smoothening(filename: str, input_filename) -> List[float]:
     data = np.loadtxt(filename, dtype=str, delimiter='\t')    # Load the data from the file using np.loadtxt()
     current = data[:, cc]    # Extract the current from the data array and Convert from strings to floats
     current_float = [float(x) for x in current]
     time = data[:, tc]
     time_float = [float(x) for x in time]
-
+    voltage = float(input_filename.split("_")[-1].split(".")[0].replace("V", ""))
+    volume = float(input_filename.split("_")[3].replace("uL", ""))
+    length = float(input_filename.split("_")[2].replace("cm", ""))
+    elec_field = float(100 * voltage / length)
+    
     # Perform data smoothing using Savitzky-Golay filter with window length of 30 and polynomial order of 3
     # Note: Higher window length -> more smoothing, less detail; higher polynomial order -> more detail, introduced noise
     current_float_smooth = savgol_filter(current_float, 31, 3)
@@ -39,7 +43,7 @@ def data_smoothening(filename: str) -> List[float]:
     fig, ax = plt.subplots()    # Create a figure and axes objects for plotting
     ax.plot(current_float, color='blue', label='Original Current')    # Plot the original current-time data in blue
     ax.plot(current_float_smooth, color='red', label='Smoothed Current')    # Plot the smoothed data in red
-    ax.set_title('Current vs. Time')    # Set the title and axis labels
+    ax.set_title(['Current vs. Time: {} V/m, {} uL'.format(elec_field, volume)])    # Set the title and axis labels
     ax.set_xlabel('Time (s)')
     ax.set_ylabel('Current (A)')
     ax.legend()    # Add a legend to the plot
@@ -100,7 +104,7 @@ def plot_fft(fft_current: List[complex], time_float: List[float], path: str, inp
     else:
         None
         
-def split_file(input_file):
+def split_file(input_file, vol_range, vol_i):
     with open(input_file, 'r') as f:# Open the input file in read mode
         lines = f.readlines()# Read all lines of the file and store them in the list 'lines'
     with open('tmp_data.txt', 'w') as f:# Open a new file in write mode to write the updated data
@@ -110,7 +114,7 @@ def split_file(input_file):
             f.write(data) # Join the updated values with semicolons and write them to the new file
     data = np.loadtxt('tmp_data.txt', delimiter='\t')
     # Split data into 10 separate arrays based on the voltage value
-    vol_range = float(input("How many number of voltage points were recorded: "))
+    #vol_range = float(input("How many number of voltage points were recorded: "))
     split_data = np.split(data, vol_range, axis=1)
     
     output_dir = os.path.join(direc, "Split_inputfile")
@@ -119,7 +123,7 @@ def split_file(input_file):
     #V_start = float(input("Specify the starting voltage: "))
     #vs = int(V_start)
     for i, data in enumerate(split_data, start=1):
-        np.savetxt(os.path.join(output_dir, f"{input_filenames}_{i}V.txt"), data, delimiter='\t')
+        np.savetxt(os.path.join(output_dir, f"{input_filenames}_{i+vol_i-1}V.txt"), data, delimiter='\t')
         
 # ========================== functions end here ===============================
 
@@ -130,12 +134,14 @@ current_col = float(input("Which column has the current data? ")) - 1
 time_col = float(input("Which column has the time data? ")) - 1
 cc = int(current_col)
 tc = int(time_col)
+vol_range = int(input("How many number of voltage points were recorded: "))
+vol_i = int(input("what was the first voltage value?: "))
 
 if split == 'y':
     for filenames in os.listdir(direc):
         input_filenames = os.path.splitext(os.path.basename(filenames))[0]
         if filenames.endswith(".txt"):
-            split_file(os.path.join(direc, filenames))
+            split_file(os.path.join(direc, filenames), vol_range, vol_i)
             output_dir = os.path.join(direc, "Split_inputfile")
     path = os.path.join(direc, "Split_inputfile")
 elif split == 'n':
@@ -147,7 +153,7 @@ for filename in os.listdir(path):
         input_filename = os.path.splitext(os.path.basename(filename))[0]
         comma_to_dot(os.path.join(path, filename))
         if smooth == 'y':
-            current_float_smooth = data_smoothening('tmp_data.txt')  # pass input_filename to data_smoothening
+            current_float_smooth = data_smoothening('tmp_data.txt', input_filename)  # pass input_filename to data_smoothening
             fft_result = perform_fft(current_float_smooth) # pass the stored value as the input argument to perform_fft
         elif smooth == 'n':
             data = np.loadtxt('tmp_data.txt', dtype=str, delimiter='\t')
@@ -161,5 +167,6 @@ for filename in os.listdir(path):
         current_float = [float(x) for x in current]
         time = data[:, tc]
         time_float = [float(x) for x in time]
+        plt.close()
         plot_fft(fft_result, time_float, path, input_filename)
         plt.close()
