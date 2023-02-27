@@ -81,13 +81,24 @@ def plot_fft(fft_current: List[complex], time_float: List[float], path: str, inp
     plt.rcParams['axes.labelweight'] = 'bold'
     plt.legend(['{} V/m, {} $\mu$L'.format(elec_field, volume)])
     
-    if not os.path.exists(os.path.join(path, "FFT")):
-        os.makedirs(os.path.join(path, "FFT"))
-    plt.savefig(os.path.join(path, f'FFT/{input_filename}_FFT.png'), dpi=300)
-    with open(os.path.join(path, f'FFT/{input_filename}_FFT.txt'), 'w') as f:
-        f.write('Frequency (Hz) \t Amplitude\n')
-        for i in range(len(freq)):
-             f.write('{} \t {}\n'.format(freq[i], np.abs(fft_current[i])))
+    if smooth == 'n':
+        if not os.path.exists(os.path.join(path, "FFT")):
+            os.makedirs(os.path.join(path, "FFT"))
+        plt.savefig(os.path.join(path, f'FFT/{input_filename}_FFT.png'), dpi=300)
+        with open(os.path.join(path, f'FFT/{input_filename}_FFT.txt'), 'w') as f:
+            f.write('Frequency (Hz) \t Amplitude\n')
+            for i in range(len(freq)):
+                 f.write('{} \t {}\n'.format(freq[i], np.abs(fft_current[i])))
+    elif smooth == 'y':
+        if not os.path.exists(os.path.join(path, "FFT_smoothed")):
+            os.makedirs(os.path.join(path, "FFT_smoothed"))
+        plt.savefig(os.path.join(path, f'FFT_smoothed/{input_filename}_FFT_smoothed.png'), dpi=300)
+        with open(os.path.join(path, f'FFT_smoothed/{input_filename}_FFT_smoothed.txt'), 'w') as f:
+            f.write('Frequency (Hz) \t Amplitude\n')
+            for i in range(len(freq)):
+                 f.write('{} \t {}\n'.format(freq[i], np.abs(fft_current[i]))) 
+    else:
+        None
         
 def split_file(input_file):
     with open(input_file, 'r') as f:# Open the input file in read mode
@@ -105,6 +116,8 @@ def split_file(input_file):
     output_dir = os.path.join(direc, "Split_inputfile")
     os.makedirs(output_dir, exist_ok=True)
     # Save each split array to a separate file with the original file name appended by the voltage value
+    #V_start = float(input("Specify the starting voltage: "))
+    #vs = int(V_start)
     for i, data in enumerate(split_data, start=1):
         np.savetxt(os.path.join(output_dir, f"{input_filenames}_{i}V.txt"), data, delimiter='\t')
         
