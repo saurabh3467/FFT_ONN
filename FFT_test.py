@@ -48,11 +48,11 @@ def data_smoothening(filename: str, input_filename) -> List[float]:
     ax.set_ylabel('Current (A)')
     ax.legend()    # Add a legend to the plot
     #plt.show()# Show the plot
-    if not os.path.exists(os.path.join(path,'Smoothed_Data')):# Create the subfolder if it does not exist yet
-        os.makedirs(os.path.join(path,'Smoothed_Data'))
-    plt.savefig(os.path.join(path, f'Smoothed_Data/{input_filename}_smooth.png'), dpi=300)
+    if not os.path.exists(os.path.join(path,'parsed_Smoothed_Data')):# Create the subfolder if it does not exist yet
+        os.makedirs(os.path.join(path,'parsed_Smoothed_Data'))
+    plt.savefig(os.path.join(path, f'parsed_Smoothed_Data/{input_filename}_smooth.png'), dpi=300)
     plt.close()
-    with open(os.path.join(path, f'Smoothed_Data/{input_filename}_smooth.txt'), 'w') as f:
+    with open(os.path.join(path, f'parsed_Smoothed_Data/{input_filename}_smooth.txt'), 'w') as f:
         f.write('Time(s) \t Original_Current(A) \t Smoothed_Current(A)\n')
         for i in range(len(time_float)):
              f.write('{} \t {} \t {}\n'.format(time_float[i], np.abs(current_float[i]), np.abs(current_float_smooth[i])))
@@ -86,18 +86,18 @@ def plot_fft(fft_current: List[complex], time_float: List[float], path: str, inp
     plt.legend(['{} V/m, {} $\mu$L'.format(elec_field, volume)])
     
     if smooth == 'n':
-        if not os.path.exists(os.path.join(path, "FFT")):
-            os.makedirs(os.path.join(path, "FFT"))
-        plt.savefig(os.path.join(path, f'FFT/{input_filename}_FFT.png'), dpi=300)
-        with open(os.path.join(path, f'FFT/{input_filename}_FFT.txt'), 'w') as f:
+        if not os.path.exists(os.path.join(path, "parsed_FFT")):
+            os.makedirs(os.path.join(path, "parsed_FFT"))
+        plt.savefig(os.path.join(path, f'parsed_FFT/{input_filename}_FFT.png'), dpi=300)
+        with open(os.path.join(path, f'parsed_FFT/{input_filename}_FFT.txt'), 'w') as f:
             f.write('Frequency (Hz) \t Amplitude\n')
             for i in range(len(freq)):
                  f.write('{} \t {}\n'.format(freq[i], np.abs(fft_current[i])))
     elif smooth == 'y':
-        if not os.path.exists(os.path.join(path, "FFT_smoothed")):
-            os.makedirs(os.path.join(path, "FFT_smoothed"))
-        plt.savefig(os.path.join(path, f'FFT_smoothed/{input_filename}_FFT_smoothed.png'), dpi=300)
-        with open(os.path.join(path, f'FFT_smoothed/{input_filename}_FFT_smoothed.txt'), 'w') as f:
+        if not os.path.exists(os.path.join(path, "parsed_FFT_smoothed")):
+            os.makedirs(os.path.join(path, "parsed_FFT_smoothed"))
+        plt.savefig(os.path.join(path, f'parsed_FFT_smoothed/{input_filename}_FFT_smoothed.png'), dpi=300)
+        with open(os.path.join(path, f'parsed_FFT_smoothed/{input_filename}_FFT_smoothed.txt'), 'w') as f:
             f.write('Frequency (Hz) \t Amplitude\n')
             for i in range(len(freq)):
                  f.write('{} \t {}\n'.format(freq[i], np.abs(fft_current[i]))) 
@@ -147,26 +147,22 @@ if split == 'y':
 elif split == 'n':
     path = direc
 
-smooth = input("Do you want to smoothen I-V data? (y/n) ")
 for filename in os.listdir(path):
     if filename.endswith('.txt'):
         input_filename = os.path.splitext(os.path.basename(filename))[0]
         comma_to_dot(os.path.join(path, filename))
-        if smooth == 'y':
-            current_float_smooth = data_smoothening('tmp_data.txt', input_filename)  # pass input_filename to data_smoothening
-            fft_result = perform_fft(current_float_smooth) # pass the stored value as the input argument to perform_fft
-        elif smooth == 'n':
-            data = np.loadtxt('tmp_data.txt', dtype=str, delimiter='\t')
-            current = data[:, cc]
-            current_float = [float(x) for x in current]
-            fft_result = perform_fft(current_float) # pass the stored value as the input argument to perform_fft
-        else:
-            print("What is wrong with you? Answer y/n!")
         data = np.loadtxt('tmp_data.txt', dtype=str, delimiter='\t')
         current = data[:, cc]
         current_float = [float(x) for x in current]
         time = data[:, tc]
         time_float = [float(x) for x in time]
+        smooth = 'n'
+        fft_result = perform_fft(current_float) # pass the stored value as the input argument to perform_fft
+        plot_fft(fft_result, time_float, path, input_filename)
+        plt.close()
+        smooth = 'y'
+        current_float_smooth = data_smoothening('tmp_data.txt', input_filename)  # pass input_filename to data_smoothening
+        fft_result = perform_fft(current_float_smooth) # fft on smoothed data
         plt.close()
         plot_fft(fft_result, time_float, path, input_filename)
         plt.close()
