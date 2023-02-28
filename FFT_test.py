@@ -18,11 +18,11 @@ def comma_to_dot(filename: str) -> None:
         lines = f.readlines()# Read all lines of the file and store them in the list 'lines'
     with open('tmp_data.txt', 'w') as f:# Open a new file in write mode to write the updated data
         for i, line in enumerate(lines):        # Loop through the lines of the input file
-            #if i > 0:# Skip the first line (header)
-            data = line.strip().split(';')# Split the line into a list of values
-            for j, value in enumerate(data):# Replace commas with dots in the all values of the line
-                data[j] = data[j].replace(',', '.')
-            f.write('\t'.join(data) + '\n')# Join the updated values with semicolons and write them to the new file
+            if i > 0:# Skip the first line (header)
+                data = line.strip().split(';')# Split the line into a list of values
+                for j, value in enumerate(data):# Replace commas with dots in the all values of the line
+                    data[j] = data[j].replace(',', '.')
+                f.write('\t'.join(data) + '\n')# Join the updated values with semicolons and write them to the new file
 
 # function to perform data smoothening on the current-time data
 def data_smoothening(filename: str, input_filename) -> List[float]:
@@ -134,10 +134,10 @@ current_col = float(input("Which column has the current data? ")) - 1
 time_col = float(input("Which column has the time data? ")) - 1
 cc = int(current_col)
 tc = int(time_col)
-vol_range = int(input("How many number of voltage points were recorded: "))
-vol_i = int(input("what was the first voltage value?: "))
 
 if split == 'y':
+    vol_range = int(input("How many number of voltage points were recorded: "))
+    vol_i = int(input("what was the first voltage value?: "))
     for filenames in os.listdir(direc):
         input_filenames = os.path.splitext(os.path.basename(filenames))[0]
         if filenames.endswith(".txt"):
@@ -150,6 +150,10 @@ elif split == 'n':
 for filename in os.listdir(path):
     if filename.endswith('.txt'):
         input_filename = os.path.splitext(os.path.basename(filename))[0]
+        with open(os.path.join(path, filename), 'r') as f:
+            # Skip the first line of the file
+            next(f)
+            lines = f.readlines()
         comma_to_dot(os.path.join(path, filename))
         data = np.loadtxt('tmp_data.txt', dtype=str, delimiter='\t')
         current = data[:, cc]
