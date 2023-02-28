@@ -9,14 +9,14 @@ import numpy as np
 
 # Define formatting parameters
 line_width = 1
-marker_size = 3
+marker_size = 3 #change size of data points
 axis_width = 2
 font_size = 12
 x_label = "Frequency (Hz)"
 y_label = "Amplitude"
 plottitle = "Fast Fourier Transform"
 legend = "0.5 V/m"
-delimiter_in_file = '\t'
+delimiter_in_file = '\t' # change this to ',' or ' ' or ';' if you have comma, space, or semicolor as delimiter in the input file
 
 # Load data from file
 filename = input("Enter path and name of the file: ")
@@ -25,15 +25,19 @@ data = np.loadtxt(filename, delimiter=delimiter_in_file, skiprows=1)
 # Extract x and y data
 x = data[:, 0]
 y = data[:, 1]
+y_filtered = y[x > 0.01]
+# Set the maximum range of y to be 1.1 times the maximum value of y_filtered
+ymax = np.max(y_filtered)
 
 y_min = -0.01
-y_max = 150
+y_max = 100*ymax
 x_min = -0.01
 x_max = 20
 
 # Create plot
+# See link for options: https://matplotlib.org/2.1.2/api/_as_gen/matplotlib.pyplot.plot.html
 fig, ax = plt.subplots(figsize=(6, 4))
-ax.plot(x, y, '-o', linewidth=line_width, markersize=marker_size)
+ax.plot(x, y, '-o', linewidth=line_width, markersize=marker_size, color='red', linestyle='dashed')
 
 # Customize plot formatting
 ax.spines['bottom'].set_linewidth(axis_width)
