@@ -117,7 +117,7 @@ def split_file(input_file, vol_range, vol_i):
     #vol_range = float(input("How many number of voltage points were recorded: "))
     split_data = np.split(data, vol_range, axis=1)
     
-    output_dir = os.path.join(direc, "Split_inputfile")
+    output_dir = os.path.join(direc, "parsed_splitdata")
     os.makedirs(output_dir, exist_ok=True)
     # Save each split array to a separate file with the original file name appended by the voltage value
     #V_start = float(input("Specify the starting voltage: "))
@@ -142,8 +142,8 @@ if split == 'y':
         input_filenames = os.path.splitext(os.path.basename(filenames))[0]
         if filenames.endswith(".txt"):
             split_file(os.path.join(direc, filenames), vol_range, vol_i)
-            output_dir = os.path.join(direc, "Split_inputfile")
-    path = os.path.join(direc, "Split_inputfile")
+            output_dir = os.path.join(direc, "parsed_splitdata")
+    path = os.path.join(direc, "parsed_splitdata")
 elif split == 'n':
     path = direc
 
