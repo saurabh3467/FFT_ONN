@@ -28,6 +28,7 @@ y = data[:, 1]
 y_filtered = y[x > 0.01]
 # Set the maximum range of y to be 1.1 times the maximum value of y_filtered
 ymax = np.max(y_filtered)
+x_freq1 =  x[np.argmax(y_filtered)]
 
 y_min = -0.01
 y_max = 1.1*ymax
@@ -50,6 +51,7 @@ ax.set_ylabel(y_label, fontsize=font_size)
 ax.set_xlim([x_min, x_max])
 ax.set_ylim([y_min, y_max])
 ax.set_title(plottitle, fontsize=font_size)
+ax.text(x_freq1, ymax*0.95, f"f1={x_freq1:.2f}", ha='left', va='center')
 ax.grid(False)#, linestyle='--', linewidth=axis_width) # grid lines, replace True 
 
 # Add legend
