@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Define formatting parameters
-line_width = 1
+line_width = 0.5
 marker_size = 3 #change size of data points
 axis_width = 2
 font_size = 12
@@ -30,14 +30,14 @@ y_filtered = y[x > 0.01]
 ymax = np.max(y_filtered)
 
 y_min = -0.01
-y_max = 100*ymax
+y_max = 1.1*ymax
 x_min = -0.01
 x_max = 20
 
 # Create plot
 # See link for options: https://matplotlib.org/2.1.2/api/_as_gen/matplotlib.pyplot.plot.html
 fig, ax = plt.subplots(figsize=(6, 4))
-ax.plot(x, y, '-o', linewidth=line_width, markersize=marker_size, color='red', linestyle='dashed')
+ax.plot(x, y, '-', linewidth=line_width, markersize=marker_size, color='red')
 
 # Customize plot formatting
 ax.spines['bottom'].set_linewidth(axis_width)
@@ -50,7 +50,7 @@ ax.set_ylabel(y_label, fontsize=font_size)
 ax.set_xlim([x_min, x_max])
 ax.set_ylim([y_min, y_max])
 ax.set_title(plottitle, fontsize=font_size)
-ax.grid(False)#, linestyle='--', linewidth=axis_width)
+ax.grid(False)#, linestyle='--', linewidth=axis_width) # grid lines, replace True 
 
 # Add legend
 ax.legend([legend], fontsize=font_size, loc='best')
