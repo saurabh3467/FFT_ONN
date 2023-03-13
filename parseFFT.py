@@ -113,15 +113,12 @@ def split_file(input_file, vol_range, vol_i):
             data = line.replace(',', '.')
             f.write(data) # Join the updated values with semicolons and write them to the new file
     data = np.loadtxt('tmp_data.txt', delimiter='\t')
-    # Split data into 10 separate arrays based on the voltage value
-    #vol_range = float(input("How many number of voltage points were recorded: "))
+    # Split data into n separate arrays based on the voltage value
     split_data = np.split(data, vol_range, axis=1)
     
     output_dir = os.path.join(direc, "parsed_splitdata")
     os.makedirs(output_dir, exist_ok=True)
     # Save each split array to a separate file with the original file name appended by the voltage value
-    #V_start = float(input("Specify the starting voltage: "))
-    #vs = int(V_start)
     for i, data in enumerate(split_data, start=1):
         np.savetxt(os.path.join(output_dir, f"{input_filenames}_{i+vol_i-1}V.txt"), data, delimiter='\t')
         
