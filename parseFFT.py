@@ -41,8 +41,8 @@ def data_smoothening(filename: str, input_filename) -> List[float]:
     current_float_smooth = savgol_filter(current_float, 31, 3)
     
     fig, ax = plt.subplots()    # Create a figure and axes objects for plotting
-    ax.plot(time_float, current_float, color='blue', label='Original Current')    # Plot the original current-time data in blue
-    ax.plot(time_float, current_float_smooth, color='red', label='Smoothed Current')    # Plot the smoothed data in red
+    ax.plot(time_float, current_float, color='blue', linewidth = 0.5, label='Original Current')    # Plot the original current-time data in blue
+    ax.plot(time_float, current_float_smooth, color='red', linewidth = 0.5, label='Smoothed Current')    # Plot the smoothed data in red
     ax.set_title(['Current vs. Time: {} V/m, {} uL'.format(elec_field, volume)])    # Set the title and axis labels
     ax.set_xlabel('Time (s)')
     ax.set_ylabel('Current (A)')
